@@ -261,49 +261,65 @@ async function sendTempMessage(channel, payload, ttl = PANEL_TEMP_DELETE_MS) {
   return msg;
 }
 
-function getVehiclesForMember(member) {
-
-  if (member.roles.cache.has(RANK_ROLES.chestor_general))
-    return VEHICLES_BY_RANK.chestor_general;
-
-  if (member.roles.cache.has(RANK_ROLES.sub_chestor))
-    return VEHICLES_BY_RANK.sub_chestor;
-
-  if (member.roles.cache.has(RANK_ROLES.comisar_sef))
-    return VEHICLES_BY_RANK.comisar_sef;
-
-  if (member.roles.cache.has(RANK_ROLES.comisar))
-    return VEHICLES_BY_RANK.comisar;
-
-  if (member.roles.cache.has(RANK_ROLES.subcomisar))
-    return VEHICLES_BY_RANK.subcomisar;
-
-  if (member.roles.cache.has(RANK_ROLES.inspector_principal))
-    return VEHICLES_BY_RANK.inspector_principal;
-
-  if (member.roles.cache.has(RANK_ROLES.inspector))
-    return VEHICLES_BY_RANK.inspector;
-
-  if (member.roles.cache.has(RANK_ROLES.subinspector))
-    return VEHICLES_BY_RANK.subinspector;
-
-  if (member.roles.cache.has(RANK_ROLES.agent_sef_principal))
-    return VEHICLES_BY_RANK.agent_sef_principal;
-
-  if (member.roles.cache.has(RANK_ROLES.agent_sef))
-    return VEHICLES_BY_RANK.agent_sef;
-
-  if (member.roles.cache.has(RANK_ROLES.agent_sef_adjunct))
-    return VEHICLES_BY_RANK.agent_sef_adjunct;
-
-  if (member.roles.cache.has(RANK_ROLES.agent_principal))
-    return VEHICLES_BY_RANK.agent_principal;
-
-  if (member.roles.cache.has(RANK_ROLES.agent))
-    return VEHICLES_BY_RANK.agent;
-
-  return [];
-}
+    function getVehiclesForMember(member) {
+      if (!member?.roles?.cache) {
+        return [];
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.chestor_general)) {
+        return VEHICLES_BY_RANK.chestor_general;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.sub_chestor)) {
+        return VEHICLES_BY_RANK.sub_chestor;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.comisar_sef)) {
+        return VEHICLES_BY_RANK.comisar_sef;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.comisar)) {
+        return VEHICLES_BY_RANK.comisar;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.subcomisar)) {
+        return VEHICLES_BY_RANK.subcomisar;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.inspector_principal)) {
+        return VEHICLES_BY_RANK.inspector_principal;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.inspector)) {
+        return VEHICLES_BY_RANK.inspector;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.subinspector)) {
+        return VEHICLES_BY_RANK.subinspector;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.agent_sef_principal)) {
+        return VEHICLES_BY_RANK.agent_sef_principal;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.agent_sef)) {
+        return VEHICLES_BY_RANK.agent_sef;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.agent_sef_adjunct)) {
+        return VEHICLES_BY_RANK.agent_sef_adjunct;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.agent_principal)) {
+        return VEHICLES_BY_RANK.agent_principal;
+      }
+    
+      if (member.roles.cache.has(RANK_ROLES.agent)) {
+        return VEHICLES_BY_RANK.agent;
+      }
+    
+      return [];
+    }
 
 function buildPanelEmbed() {
   return new EmbedBuilder()
@@ -477,36 +493,46 @@ client.on("interactionCreate", async (interaction) => {
     if (interaction.isUserSelectMenu() && interaction.customId === "patrol_select_partner") {
       const partnerId = interaction.values[0];
       const partnerMember = await interaction.guild.members.fetch(partnerId).catch(() => null);
-
+    
       if (!partnerMember) {
         return interaction.update({
           content: "❌ Nu am putut găsi partenerul selectat.",
           components: [],
         });
       }
-
-      pendingPatrols.set(interaction.user.id, {
-        partnerId,
-        partnerLabel: `<@${partnerId}>`,
-      });
-
-      const vehicles = getVehiclesForMember(interaction.member);
-
+    
+      const creatorMember = await interaction.guild.members
+        .fetch(interaction.user.id)
+        .catch(() => null);
+    
+      if (!creatorMember) {
+        return interaction.update({
+          content: "❌ Nu am putut găsi datele tale pe server.",
+          components: [],
+        });
+      }
+    
+      const vehicles = getVehiclesForMember(creatorMember);
+    
       if (!vehicles.length) {
-        pendingPatrols.delete(interaction.user.id);
         return interaction.update({
           content: "❌ Nu ai niciun vehicul disponibil pentru gradul tău. Verifică rolurile setate în bot.",
           components: [],
         });
       }
-
+    
+      pendingPatrols.set(interaction.user.id, {
+        partnerId,
+        partnerLabel: `<@${partnerId}>`,
+      });
+    
       const vehicleMenu = new StringSelectMenuBuilder()
         .setCustomId("patrol_select_vehicle")
         .setPlaceholder("Selectează vehiculul de patrulă")
         .addOptions(vehicles);
-
+    
       const row = new ActionRowBuilder().addComponents(vehicleMenu);
-
+    
       await interaction.update({
         content: `✅ Partener selectat: <@${partnerId}>\n\n🚓 Acum selectează vehiculul:`,
         components: [row],
@@ -706,5 +732,6 @@ client.on("interactionCreate", async (interaction) => {
     }
   }
 });
+
 
 client.login(DISCORD_TOKEN);
