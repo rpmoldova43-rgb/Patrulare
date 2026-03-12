@@ -358,12 +358,12 @@ function isUpManager(member) {
 }
 
 async function getCazierCountForOfficer(entry) {
-  if (!entry?.officerName) return 0;
+  if (!entry?.officerId) return 0;
 
   try {
     const result = await pool.query(
-      `SELECT COUNT(*)::int AS count FROM caziere WHERE user_id = $1`,
-      [entry.officerName]
+      `SELECT COUNT(*)::int AS count FROM caziere WHERE added_by = $1`,
+      [entry.officerId]
     );
     return result.rows[0]?.count || 0;
   } catch (err) {
