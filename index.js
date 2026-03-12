@@ -35,6 +35,22 @@ const {
   PATROL_STATS_MESSAGE_ID,
   GRADE_SUB_CHESTOR_ID,
   GRADE_CHESTOR_ID,
+  PROMOTION_LOG_CHANNEL_ID,
+  BOT_OWNER_ID,
+  DEV_ROLE_ID,
+  ROLE_AGENT_ID,
+  ROLE_AGENT_PRINCIPAL_ID,
+  ROLE_AGENT_SEF_ADJUNCT_ID,
+  ROLE_AGENT_SEF_ID,
+  ROLE_AGENT_SEF_PRINCIPAL_ID,
+  ROLE_SUBINSPECTOR_ID,
+  ROLE_INSPECTOR_ID,
+  ROLE_INSPECTOR_PRINCIPAL_ID,
+  ROLE_SUBCOMISAR_ID,
+  ROLE_COMISAR_ID,
+  ROLE_COMISAR_SEF_ID,
+  ROLE_SUB_CHESTOR_ID,
+  ROLE_CHESTOR_GENERAL_ID,
 } = process.env;
 
 if (
@@ -180,20 +196,38 @@ const VEHICLES_BY_RANK = {
 /* ================= ROLE IDS ================= */
 
 const RANK_ROLES = {
-  agent: "1479937563467845722",
-  agent_principal: "1479937860357591224",
-  agent_sef_adjunct: "1479937949809377404",
-  agent_sef: "1479938054259998984",
-  agent_sef_principal: "1479938118491574534",
-  subinspector: "1479938188524130539",
-  inspector: "1479938247554502867",
-  inspector_principal: "1479938306580938784",
-  subcomisar: "1479938369101234217",
-  comisar: "1479938441096597625",
-  comisar_sef: "1479938499057680406",
-  sub_chestor: "1481376606508285952",
-  chestor_general: "1474582052312711278",
+  agent: ROLE_AGENT_ID || "1479937563467845722",
+  agent_principal: ROLE_AGENT_PRINCIPAL_ID || "1479937860357591224",
+  agent_sef_adjunct: ROLE_AGENT_SEF_ADJUNCT_ID || "1479937949809377404",
+  agent_sef: ROLE_AGENT_SEF_ID || "1479938054259998984",
+  agent_sef_principal: ROLE_AGENT_SEF_PRINCIPAL_ID || "1479938118491574534",
+  subinspector: ROLE_SUBINSPECTOR_ID || "1479938188524130539",
+  inspector: ROLE_INSPECTOR_ID || "1479938247554502867",
+  inspector_principal: ROLE_INSPECTOR_PRINCIPAL_ID || "1479938306580938784",
+  subcomisar: ROLE_SUBCOMISAR_ID || "1479938369101234217",
+  comisar: ROLE_COMISAR_ID || "1479938441096597625",
+  comisar_sef: ROLE_COMISAR_SEF_ID || "1479938499057680406",
+  sub_chestor: ROLE_SUB_CHESTOR_ID || "1481376606508285952",
+  chestor_general: ROLE_CHESTOR_GENERAL_ID || "1474582052312711278",
 };
+
+const UP_RANKS = [
+  { level: 0, key: "agent", name: "👮 Agent", roleId: RANK_ROLES.agent, requiredHours: 0 },
+  { level: 1, key: "agent_principal", name: "👮 Agent Principal", roleId: RANK_ROLES.agent_principal, requiredHours: 100 },
+  { level: 2, key: "agent_sef_adjunct", name: "🛡️ Agent Șef Adjunct", roleId: RANK_ROLES.agent_sef_adjunct, requiredHours: 200 },
+  { level: 3, key: "agent_sef", name: "🛡️ Agent Șef", roleId: RANK_ROLES.agent_sef, requiredHours: 300 },
+  { level: 4, key: "agent_sef_principal", name: "⭐ Agent Șef Principal", roleId: RANK_ROLES.agent_sef_principal, requiredHours: 400 },
+  { level: 5, key: "subinspector", name: "🎖️ Subinspector", roleId: RANK_ROLES.subinspector, requiredHours: 500 },
+  { level: 6, key: "inspector", name: "🎖️ Inspector", roleId: RANK_ROLES.inspector, requiredHours: 600 },
+  { level: 7, key: "inspector_principal", name: "🏅 Inspector Principal", roleId: RANK_ROLES.inspector_principal, requiredHours: 700 },
+  { level: 8, key: "subcomisar", name: "🥇 Subcomisar", roleId: RANK_ROLES.subcomisar, requiredHours: 800 },
+  { level: 9, key: "comisar", name: "🥈 Comisar", roleId: RANK_ROLES.comisar, requiredHours: 900 },
+  { level: 10, key: "comisar_sef", name: "🥉 Comisar Șef", roleId: RANK_ROLES.comisar_sef, requiredHours: 1000 },
+  { level: 11, key: "sub_chestor", name: "👑 Sub Chestor", roleId: RANK_ROLES.sub_chestor, requiredHours: 1100 },
+  { level: 12, key: "chestor_general", name: "👑 Chestor General", roleId: RANK_ROLES.chestor_general, requiredHours: 1200 },
+].filter((x) => x.roleId);
+
+const ALL_UP_ROLE_IDS = UP_RANKS.map((x) => x.roleId);
 
 /* ================= STORAGE ================= */
 
@@ -201,7 +235,7 @@ const pendingPatrols = new Map();
 const activePatrols = new Map();
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMembers],
   partials: [Partials.Channel],
 });
 
@@ -260,6 +294,180 @@ function writeStats(data) {
     console.error("❌ Eroare la scrierea patrol-stats.json:", err);
   }
 }
+
+function msToHours(ms) {
+  return (ms || 0) / 1000 / 60 / 60;
+}
+
+function formatHours(hours) {
+  return `${Number(hours || 0).toFixed(2)}h`;
+}
+
+function getHighestRankForHours(totalHours) {
+  let result = UP_RANKS[0] || null;
+  for (const rank of UP_RANKS) {
+    if (totalHours >= rank.requiredHours) result = rank;
+  }
+  return result;
+}
+
+function getNextRank(rank) {
+  if (!rank) return UP_RANKS[0] || null;
+  return UP_RANKS.find((r) => r.level === rank.level + 1) || null;
+}
+
+function getCurrentRankFromMember(member) {
+  return UP_RANKS.find((rank) => member.roles.cache.has(rank.roleId)) || null;
+}
+
+function safePercent(current, target) {
+  if (!target || target <= 0) return 100;
+  return Math.max(0, Math.min(100, Math.floor((current / target) * 100)));
+}
+
+function isUpManager(member) {
+  if (!member) return false;
+  if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
+  if (member.permissions.has(PermissionFlagsBits.ManageRoles)) return true;
+  if (BOT_OWNER_ID && member.id === BOT_OWNER_ID) return true;
+  if (DEV_ROLE_ID && member.roles.cache.has(DEV_ROLE_ID)) return true;
+  return false;
+}
+
+async function sendPromotionLog(guild, member, oldRank, newRank, totalHours) {
+  if (!PROMOTION_LOG_CHANNEL_ID || !newRank) return;
+
+  const channel = await guild.channels.fetch(PROMOTION_LOG_CHANNEL_ID).catch(() => null);
+  if (!channel || channel.type !== ChannelType.GuildText) return;
+
+  const embed = new EmbedBuilder()
+    .setColor(0x2ecc71)
+    .setTitle("📈 Promovare automată poliție")
+    .addFields(
+      { name: "Polițist", value: `<@${member.id}>`, inline: true },
+      { name: "Grad vechi", value: oldRank?.name || "Niciun grad", inline: true },
+      { name: "Grad nou", value: newRank.name, inline: true },
+      { name: "Ore totale", value: formatHours(totalHours), inline: true }
+    )
+    .setFooter({ text: "Moldova RP • Sistem UP automat" })
+    .setTimestamp();
+
+  await channel.send({ embeds: [embed] }).catch(() => {});
+}
+
+async function syncMemberUpRole(member) {
+  const stats = readStats();
+  const entry = stats[member.id];
+
+  const totalMs = entry?.totalMs || 0;
+  const totalHours = msToHours(totalMs);
+
+  const targetRank = getHighestRankForHours(totalHours);
+  if (!targetRank) {
+    return { changed: false, totalHours, oldRank: null, newRank: null };
+  }
+
+  const currentRank = getCurrentRankFromMember(member);
+
+  if (currentRank && currentRank.level === targetRank.level) {
+    return { changed: false, totalHours, oldRank: currentRank, newRank: targetRank };
+  }
+
+  const rolesToRemove = ALL_UP_ROLE_IDS.filter(
+    (roleId) => member.roles.cache.has(roleId) && roleId !== targetRank.roleId
+  );
+
+  try {
+    if (rolesToRemove.length) {
+      await member.roles.remove(rolesToRemove, "Actualizare automată grad pe baza UP");
+    }
+
+    if (!member.roles.cache.has(targetRank.roleId)) {
+      await member.roles.add(targetRank.roleId, "Promovare automată pe baza orelor din patrule");
+    }
+
+    return {
+      changed: true,
+      totalHours,
+      oldRank: currentRank,
+      newRank: targetRank,
+    };
+  } catch (err) {
+    console.error(`❌ Eroare la sync UP pentru ${member.user.tag}:`, err);
+    return {
+      changed: false,
+      totalHours,
+      oldRank: currentRank,
+      newRank: targetRank,
+      error: err,
+    };
+  }
+}
+
+async function syncAllUpRoles(guild) {
+  const members = await guild.members.fetch();
+  const stats = readStats();
+  let changed = 0;
+
+  for (const [, member] of members) {
+    if (member.user.bot) continue;
+    if (!stats[member.id]) continue;
+
+    const result = await syncMemberUpRole(member);
+    if (result.changed) {
+      changed++;
+      await sendPromotionLog(guild, member, result.oldRank, result.newRank, result.totalHours);
+    }
+  }
+
+  return changed;
+}
+
+////////////////////           NOI              /////////////////
+
+function msToHours(ms) {
+  return (ms || 0) / 1000 / 60 / 60;
+}
+
+function formatHours(hours) {
+  return `${Number(hours || 0).toFixed(2)}h`;
+}
+
+function getHighestRankForHours(totalHours) {
+  let result = UP_RANKS[0] || null;
+  for (const rank of UP_RANKS) {
+    if (totalHours >= rank.requiredHours) {
+      result = rank;
+    }
+  }
+  return result;
+}
+
+function getNextRank(rank) {
+  if (!rank) return UP_RANKS[0] || null;
+  return UP_RANKS.find((r) => r.level === rank.level + 1) || null;
+}
+
+function getCurrentRankFromMember(member) {
+  return UP_RANKS.find((rank) => member.roles.cache.has(rank.roleId)) || null;
+}
+
+function safePercent(current, target) {
+  if (!target || target <= 0) return 100;
+  return Math.max(0, Math.min(100, Math.floor((current / target) * 100)));
+}
+
+function isUpManager(member) {
+  if (!member) return false;
+  if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
+  if (member.permissions.has(PermissionFlagsBits.ManageRoles)) return true;
+  if (BOT_OWNER_ID && member.id === BOT_OWNER_ID) return true;
+  if (DEV_ROLE_ID && member.roles.cache.has(DEV_ROLE_ID)) return true;
+  return false;
+}
+
+/////////////////////////////////////////////////////////////
+
 
 function addPatrolStats(patrolData, durationMs) {
   const allStats = readStats();
@@ -334,6 +542,96 @@ function buildSingleOfficerStatsEmbed(entry, position, totalOfficers) {
     .setFooter({ text: "Moldova RP • Statistici patrulare" })
     .setTimestamp();
 }
+
+function buildUpEmbed(member, entry) {
+  const totalMs = entry?.totalMs || 0;
+  const totalHours = msToHours(totalMs);
+
+  const currentRank = getCurrentRankFromMember(member) || getHighestRankForHours(totalHours);
+  const nextRank = getNextRank(currentRank);
+
+  const remainingHours = nextRank ? Math.max(0, nextRank.requiredHours - totalHours) : 0;
+  const progress = nextRank ? safePercent(totalHours, nextRank.requiredHours) : 100;
+
+  return new EmbedBuilder()
+    .setColor(0x3498db)
+    .setTitle("📊 Progres UP Poliție")
+    .addFields(
+      { name: "Polițist", value: `<@${member.id}>`, inline: true },
+      { name: "Grad actual", value: currentRank?.name || "Fără grad", inline: true },
+      { name: "Ore totale", value: formatHours(totalHours), inline: true },
+      { name: "Patrule totale", value: String(entry?.patrolCount || 0), inline: true },
+      { name: "Următor grad", value: nextRank ? nextRank.name : "Grad maxim atins", inline: true },
+      { name: "Necesar", value: nextRank ? formatHours(nextRank.requiredHours) : "Maxim", inline: true },
+      { name: "Ore rămase", value: nextRank ? formatHours(remainingHours) : "0.00h", inline: true },
+      { name: "Progres", value: `${progress}%`, inline: true }
+    )
+    .setFooter({ text: "1 grad nou la fiecare +100 ore de patrulare" })
+    .setTimestamp();
+}
+
+function buildTopUpEmbed(entries) {
+  const lines = entries.length
+    ? entries.map((entry, index) => {
+        const hours = msToHours(entry.totalMs || 0);
+        const rank = getHighestRankForHours(hours);
+        return `**${index + 1}.** <@${entry.officerId}> — **${formatHours(hours)}** • ${rank?.name || "Fără grad"}`;
+      })
+    : ["Nu există date pentru top UP."];
+
+  return new EmbedBuilder()
+    .setColor(0xf1c40f)
+    .setTitle("🏆 Top UP Poliție")
+    .setDescription(lines.join("\n"))
+    .setFooter({ text: "Clasament după ore totale din patrule" })
+    .setTimestamp();
+}
+
+function buildUpEmbed(member, entry) {
+  const totalMs = entry?.totalMs || 0;
+  const totalHours = msToHours(totalMs);
+
+  const currentRank = getCurrentRankFromMember(member) || getHighestRankForHours(totalHours);
+  const nextRank = getNextRank(currentRank);
+
+  const remainingHours = nextRank ? Math.max(0, nextRank.requiredHours - totalHours) : 0;
+  const progress = nextRank ? safePercent(totalHours, nextRank.requiredHours) : 100;
+
+  return new EmbedBuilder()
+    .setColor(0x3498db)
+    .setTitle("📊 Progres UP Poliție")
+    .addFields(
+      { name: "Polițist", value: `<@${member.id}>`, inline: true },
+      { name: "Grad actual", value: currentRank?.name || "Fără grad", inline: true },
+      { name: "Ore totale", value: formatHours(totalHours), inline: true },
+      { name: "Patrule totale", value: String(entry?.patrolCount || 0), inline: true },
+      { name: "Următor grad", value: nextRank ? nextRank.name : "Grad maxim atins", inline: true },
+      { name: "Necesar", value: nextRank ? formatHours(nextRank.requiredHours) : "Maxim", inline: true },
+      { name: "Ore rămase", value: nextRank ? formatHours(remainingHours) : "0.00h", inline: true },
+      { name: "Progres", value: `${progress}%`, inline: true }
+    )
+    .setFooter({ text: "1 grad nou la fiecare +100 ore de patrulare" })
+    .setTimestamp();
+}
+
+function buildTopUpEmbed(entries) {
+  const lines = entries.length
+    ? entries.map((entry, index) => {
+        const hours = msToHours(entry.totalMs || 0);
+        const rank = getHighestRankForHours(hours);
+        return `**${index + 1}.** <@${entry.officerId}> — **${formatHours(hours)}** • ${rank?.name || "Fără grad"}`;
+      })
+    : ["Nu există date pentru top UP."];
+
+  return new EmbedBuilder()
+    .setColor(0xf1c40f)
+    .setTitle("🏆 Top UP Poliție")
+    .setDescription(lines.join("\n"))
+    .setFooter({ text: "Clasament după ore totale din patrule" })
+    .setTimestamp();
+}
+
+
 
 async function updatePatrolStatsMessage(guild) {
   try {
@@ -488,8 +786,25 @@ const commands = [
       option
         .setName("politist")
         .setDescription("Selectează polițistul")
-        .setRequired(true)
+        .setRequired(true)),
+         new SlashCommandBuilder()
+    .setName("up")
+    .setDescription("Vezi progresul UP pentru tine sau pentru alt polițist")
+    .addUserOption((option) =>
+      option
+        .setName("politist")
+        .setDescription("Selectează polițistul")
+        .setRequired(false)
     ),
+
+  new SlashCommandBuilder()
+    .setName("topup")
+    .setDescription("Vezi topul polițiștilor după orele totale din patrule"),
+
+  new SlashCommandBuilder()
+    .setName("syncup")
+    .setDescription("Sincronizează automat gradele pe baza orelor")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 ].map((cmd) => cmd.toJSON());
 
 async function registerCommands() {
@@ -513,10 +828,14 @@ client.once("clientReady", async () => {
   const guild = await client.guilds.fetch(GUILD_ID).catch(() => null);
   if (guild) {
     await updatePatrolStatsMessage(guild);
+    const fullGuild = await guild.fetch();
+    const changed = await syncAllUpRoles(fullGuild).catch(() => 0);
+    console.log(`✅ Sync UP inițial finalizat. Promovări actualizate: ${changed}`);
   }
 });
 
 /* ================= INTERACTIONS ================= */
+
 
 client.on("interactionCreate", async (interaction) => {
   try {
@@ -616,6 +935,66 @@ client.on("interactionCreate", async (interaction) => {
           flags: MessageFlags.Ephemeral,
         });
       }
+
+      if (interaction.commandName === "up") {
+        const targetUser = interaction.options.getUser("politist") || interaction.user;
+        const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+
+        if (!member) {
+          return interaction.reply({
+            content: "❌ Nu am găsit membrul pe server.",
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+
+        const stats = readStats();
+        const entry = stats[targetUser.id];
+
+        if (!entry) {
+          return interaction.reply({
+            content: `❌ ${targetUser} nu are încă ore salvate în patrule.`,
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+
+        const syncResult = await syncMemberUpRole(member);
+        if (syncResult.changed) {
+          await sendPromotionLog(interaction.guild, member, syncResult.oldRank, syncResult.newRank, syncResult.totalHours);
+        }
+
+        return interaction.reply({
+          embeds: [buildUpEmbed(member, entry)],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      if (interaction.commandName === "topup") {
+        const stats = readStats();
+        const entries = Object.values(stats)
+          .sort((a, b) => (b.totalMs || 0) - (a.totalMs || 0))
+          .slice(0, 10);
+
+        return interaction.reply({
+          embeds: [buildTopUpEmbed(entries)],
+        });
+      }
+
+      if (interaction.commandName === "syncup") {
+        if (!isUpManager(interaction.member)) {
+          return interaction.reply({
+            content: "⛔ Nu ai permisiune pentru această comandă.",
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+        const changed = await syncAllUpRoles(interaction.guild);
+
+        return interaction.editReply({
+          content: `✅ Sincronizare UP finalizată. Promovări actualizate: ${changed}`,
+        });
+      }
     }
 
     if (interaction.isButton() && interaction.customId === "patrol_create_start") {
@@ -634,60 +1013,60 @@ client.on("interactionCreate", async (interaction) => {
       });
     }
 
-      if (interaction.isUserSelectMenu() && interaction.customId === "patrol_select_partner") {
-        const partnerId = interaction.values[0];
+    if (interaction.isUserSelectMenu() && interaction.customId === "patrol_select_partner") {
+      const partnerId = interaction.values[0];
 
-        if (!partnerId) {
-          return interaction.update({
-            content: "❌ Nu a fost selectat niciun partener.",
-            components: [],
-          });
-        }
-
-        if (partnerId === interaction.user.id) {
-          return interaction.update({
-            content: "❌ Nu poți începe o patrulă singur. Selectează un alt polițist ca partener.",
-            components: [],
-          });
-        }
-
-        const creatorMember = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-        const partnerMember = await interaction.guild.members.fetch(partnerId).catch(() => null);
-
-        if (!creatorMember || !partnerMember) {
-          return interaction.update({
-            content: "❌ Nu am putut găsi unul dintre membrii selectați pe server.",
-            components: [],
-          });
-        }
-
-        const vehicles = getVehiclesForMember(creatorMember);
-
-        if (!vehicles.length) {
-          return interaction.update({
-            content: "❌ Nu ai niciun vehicul disponibil pentru gradul tău. Verifică rolurile setate în bot.",
-            components: [],
-          });
-        }
-
-        pendingPatrols.set(interaction.user.id, {
-          partnerId,
-          partnerLabel: `<@${partnerId}>`,
+      if (!partnerId) {
+        return interaction.update({
+          content: "❌ Nu a fost selectat niciun partener.",
+          components: [],
         });
-
-        const vehicleMenu = new StringSelectMenuBuilder()
-          .setCustomId("patrol_select_vehicle")
-          .setPlaceholder("Selectează vehiculul de patrulă")
-          .addOptions(vehicles);
-
-        const row = new ActionRowBuilder().addComponents(vehicleMenu);
-
-        await interaction.update({
-          content: `✅ Partener selectat: <@${partnerId}>\n\n🚓 Acum selectează vehiculul:`,
-          components: [row],
-        });
-        return;
       }
+
+      if (partnerId === interaction.user.id) {
+        return interaction.update({
+          content: "❌ Nu poți începe o patrulă singur. Selectează un alt polițist ca partener.",
+          components: [],
+        });
+      }
+
+      const creatorMember = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+      const partnerMember = await interaction.guild.members.fetch(partnerId).catch(() => null);
+
+      if (!creatorMember || !partnerMember) {
+        return interaction.update({
+          content: "❌ Nu am putut găsi unul dintre membrii selectați pe server.",
+          components: [],
+        });
+      }
+
+      const vehicles = getVehiclesForMember(creatorMember);
+
+      if (!vehicles.length) {
+        return interaction.update({
+          content: "❌ Nu ai niciun vehicul disponibil pentru gradul tău. Verifică rolurile setate în bot.",
+          components: [],
+        });
+      }
+
+      pendingPatrols.set(interaction.user.id, {
+        partnerId,
+        partnerLabel: `<@${partnerId}>`,
+      });
+
+      const vehicleMenu = new StringSelectMenuBuilder()
+        .setCustomId("patrol_select_vehicle")
+        .setPlaceholder("Selectează vehiculul de patrulă")
+        .addOptions(vehicles);
+
+      const row = new ActionRowBuilder().addComponents(vehicleMenu);
+
+      await interaction.update({
+        content: `✅ Partener selectat: <@${partnerId}>\n\n🚓 Acum selectează vehiculul:`,
+        components: [row],
+      });
+      return;
+    }
 
     if (interaction.isStringSelectMenu() && interaction.customId === "patrol_select_vehicle") {
       const data = pendingPatrols.get(interaction.user.id);
@@ -842,6 +1221,20 @@ client.on("interactionCreate", async (interaction) => {
       const durationMs = Date.now() - patrolData.startedAt;
       const durationText = formatDuration(durationMs);
       addPatrolStats(patrolData, durationMs);
+
+      const patrolOwnerMember = await interaction.guild.members.fetch(patrolData.officerId).catch(() => null);
+      if (patrolOwnerMember) {
+        const syncResult = await syncMemberUpRole(patrolOwnerMember);
+        if (syncResult.changed) {
+          await sendPromotionLog(
+            interaction.guild,
+            patrolOwnerMember,
+            syncResult.oldRank,
+            syncResult.newRank,
+            syncResult.totalHours
+          );
+        }
+      }
 
       const existingButton = interaction.message.components?.[0]?.components?.[0];
       const disabledRow = new ActionRowBuilder().addComponents(
