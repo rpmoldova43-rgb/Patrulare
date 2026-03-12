@@ -4,6 +4,15 @@ const fs = require("fs");
 const path = require("path");
 const { Pool } = require("pg");
 
+pool.connect()
+  .then((client) => {
+    console.log("✅ Patrulare conectat la Postgres.");
+    client.release();
+  })
+  .catch((err) => {
+    console.error("❌ Patrulare NU se poate conecta la Postgres:", err);
+  });
+
 const {
   Client,
   GatewayIntentBits,
