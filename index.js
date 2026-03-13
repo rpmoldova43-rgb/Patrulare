@@ -433,42 +433,76 @@ async function syncMemberUpRole(member) {
   const totalHours = upData.finalHours;
 
   const currentRank = getCurrentRankFromMember(member);
-  const rankFromHours = getHighestRankForHours(totalHours);
+  console.log("DEBUG RANK:", member.user.tag, currentRank?.name || "NICIUN GRAD");
 
-// NU permite downgrade
-if (currentRank && rankFromHours.level < currentRank.level) {
-  return {
-    changed: false,
-    totalHours,
-    oldRank: currentRank,
-    newRank: currentRank,
-  };
-}
-  // dacă nu are niciun rol UP, îi dăm unul după orele actuale
-  if (!currentRank) {
-    const targetRank = getHighestRankForHours(totalHours);
-    if (!targetRank) {
-      return { changed: false, totalHours, oldRank: null, newRank: null };
-    }
+  // dacă are deja un grad, NU face downgrade
+  if (currentRank) {
+    const nextRank = getNextRank(currentRank);
 
-    try {
-      await member.roles.add(targetRank.roleId, "Setare grad inițial pe baza orelor UP");
-      return {
-        changed: true,
-        totalHours,
-        oldRank: null,
-        newRank: targetRank,
-      };
-    } catch (err) {
-      console.error(`❌ Eroare la setarea gradului inițial pentru ${member.user.tag}:`, err);
+    if (!nextRank) {
       return {
         changed: false,
         totalHours,
-        oldRank: null,
-        newRank: targetRank,
+        oldRank: currentRank,
+        newRank: currentRank,
+      };
+    }
+
+    if (totalHours < nextRank.requiredHours) {
+      return {
+        changed: false,
+        totalHours,
+        oldRank: currentRank,
+        newRank: currentRank,
+      };
+    }
+
+    try {
+      if (!member.roles.cache.has(nextRank.roleId)) {
+        await member.roles.add(nextRank.roleId, "Promovare automată pe baza orelor din patrule și caziere");
+      }
+
+      return {
+        changed: true,
+        totalHours,
+        oldRank: currentRank,
+        newRank: nextRank,
+      };
+    } catch (err) {
+      console.error(`❌ Eroare la promovarea UP pentru ${member.user.tag}:`, err);
+      return {
+        changed: false,
+        totalHours,
+        oldRank: currentRank,
+        newRank: currentRank,
         error: err,
       };
     }
+  }
+
+  // doar dacă NU are niciun grad UP
+  const targetRank = getHighestRankForHours(totalHours);
+  if (!targetRank) {
+    return { changed: false, totalHours, oldRank: null, newRank: null };
+  }
+
+  try {
+    await member.roles.add(targetRank.roleId, "Setare grad inițial pe baza orelor UP");
+    return {
+      changed: true,
+      totalHours,
+      oldRank: null,
+      newRank: targetRank,
+    };
+  } catch (err) {
+    console.error(`❌ Eroare la setarea gradului inițial pentru ${member.user.tag}:`, err);
+    return {
+      changed: false,
+      totalHours,
+      oldRank: null,
+      newRank: targetRank,
+      error: err,
+    };
   }
 
   const nextRank = getNextRank(currentRank);
