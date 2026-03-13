@@ -433,7 +433,17 @@ async function syncMemberUpRole(member) {
   const totalHours = upData.finalHours;
 
   const currentRank = getCurrentRankFromMember(member);
+  const rankFromHours = getHighestRankForHours(totalHours);
 
+// NU permite downgrade
+if (currentRank && rankFromHours.level < currentRank.level) {
+  return {
+    changed: false,
+    totalHours,
+    oldRank: currentRank,
+    newRank: currentRank,
+  };
+}
   // dacă nu are niciun rol UP, îi dăm unul după orele actuale
   if (!currentRank) {
     const targetRank = getHighestRankForHours(totalHours);
