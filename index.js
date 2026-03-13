@@ -435,12 +435,7 @@ async function syncMemberUpRole(member) {
 
   const currentRank = getCurrentRankFromMember(member);
 
-  console.log("DEBUG sync:", member.user.tag, {
-    totalHours,
-    currentRank: currentRank?.name || "NONE",
-  });
-
-  // daca are deja grad, NU ii scade gradul niciodata
+  // daca are deja grad, nu facem downgrade
   if (currentRank) {
     const nextRank = getNextRank(currentRank);
 
@@ -463,21 +458,6 @@ async function syncMemberUpRole(member) {
     }
 
     try {
-      // sterge doar gradele UP mai mici decat gradul nou
-      const rolesToRemove = UP_RANKS
-        .filter(
-          (rank) =>
-            rank.level < nextRank.level && member.roles.cache.has(rank.roleId)
-        )
-        .map((rank) => rank.roleId);
-
-      if (rolesToRemove.length) {
-        await member.roles.remove(
-          rolesToRemove,
-          "Curățare grade vechi după promovare"
-        );
-      }
-
       if (!member.roles.cache.has(nextRank.roleId)) {
         await member.roles.add(
           nextRank.roleId,
@@ -492,16 +472,45 @@ async function syncMemberUpRole(member) {
         newRank: nextRank,
       };
     } catch (err) {
-      console.error(`❌ Eroare la promovarea UP pentru ${member.user.tag}:`, err);
+      console.error("❌ Eroare UP:", err);
       return {
         changed: false,
         totalHours,
         oldRank: currentRank,
         newRank: currentRank,
-        error: err,
       };
     }
   }
+
+  // daca nu are niciun grad UP
+  const targetRank = getHighestRankForHours(totalHours);
+
+  if (!targetRank) {
+    return { changed: false, totalHours, oldRank: null, newRank: null };
+  }
+
+  try {
+    await member.roles.add(
+      targetRank.roleId,
+      "Setare grad inițial UP"
+    );
+
+    return {
+      changed: true,
+      totalHours,
+      oldRank: null,
+      newRank: targetRank,
+    };
+  } catch (err) {
+    console.error("❌ Eroare grad initial:", err);
+    return {
+      changed: false,
+      totalHours,
+      oldRank: null,
+      newRank: targetRank,
+    };
+  }
+}
 
   // daca NU are niciun grad, primește gradul initial dupa ore
   const targetRank = getHighestRankForHours(totalHours);
@@ -531,7 +540,7 @@ async function syncMemberUpRole(member) {
       error: err,
     };
   }
-}
+
 
 async function syncAllUpRoles(guild) {
   const members = await guild.members.fetch();
