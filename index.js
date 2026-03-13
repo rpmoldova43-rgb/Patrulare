@@ -538,6 +538,113 @@ console.log("[UP DEBUG]", {
 });
 
 
+async function syncMemberUpRole(member) {
+  const stats = readStats();
+  const entry = stats[member.id];
+
+  if (!entry) {
+    console.log(`[SYNCUP] ${member.user.tag} -> fara entry`);
+    return { changed: false, totalHours: 0, oldRank: null, newRank: null };
+  }
+
+  const upData = await getUpBonusData(entry);
+  const totalHours = upData.finalHours;
+
+  const currentRank = getCurrentRankFromMember(member);
+  const earnedRank = getHighestRankForHours(totalHours);
+
+  let protectedRank = null;
+
+  if (currentRank && earnedRank) {
+    protectedRank = currentRank.level >= earnedRank.level ? currentRank : earnedRank;
+  } else {
+    protectedRank = currentRank || earnedRank || null;
+  }
+
+  const nextRank = getNextRank(protectedRank);
+
+  console.log("[SYNCUP DEBUG]", {
+    user: member.user.tag,
+    currentRank: currentRank?.name || null,
+    earnedRank: earnedRank?.name || null,
+    protectedRank: protectedRank?.name || null,
+    nextRank: nextRank?.name || null,
+    totalHours,
+    rolesNow: member.roles.cache.map(r => `${r.name} (${r.id})`)
+  });
+
+  if (!protectedRank) {
+    return { changed: false, totalHours, oldRank: null, newRank: null };
+  }
+
+  try {
+    if (!member.roles.cache.has(protectedRank.roleId)) {
+      console.log(`[SYNCUP] ADD protectedRank -> ${member.user.tag}: ${protectedRank.name}`);
+      await member.roles.add(
+        protectedRank.roleId,
+        "Protejare grad existent / sincronizare UP fara downgrade"
+      );
+
+      return {
+        changed: true,
+        totalHours,
+        oldRank: currentRank,
+        newRank: protectedRank,
+      };
+    }
+
+    if (!nextRank) {
+      console.log(`[SYNCUP] ${member.user.tag} deja la grad maxim protejat`);
+      return {
+        changed: false,
+        totalHours,
+        oldRank: protectedRank,
+        newRank: protectedRank,
+      };
+    }
+
+    if (totalHours < nextRank.requiredHours) {
+      console.log(`[SYNCUP] ${member.user.tag} NU are ore pentru urmatorul grad`);
+      return {
+        changed: false,
+        totalHours,
+        oldRank: protectedRank,
+        newRank: protectedRank,
+      };
+    }
+
+    if (!member.roles.cache.has(nextRank.roleId)) {
+      console.log(`[SYNCUP] ADD nextRank -> ${member.user.tag}: ${nextRank.name}`);
+      await member.roles.add(
+        nextRank.roleId,
+        "Promovare automata pe baza orelor din patrule si caziere"
+      );
+
+      return {
+        changed: true,
+        totalHours,
+        oldRank: protectedRank,
+        newRank: nextRank,
+      };
+    }
+
+    return {
+      changed: false,
+      totalHours,
+      oldRank: protectedRank,
+      newRank: protectedRank,
+    };
+  } catch (err) {
+    console.error("❌ Eroare syncMemberUpRole:", err);
+    return {
+      changed: false,
+      totalHours,
+      oldRank: protectedRank,
+      newRank: protectedRank,
+    };
+  }
+}
+
 async function syncAllUpRoles(guild) {
   const members = await guild.members.fetch();
   const stats = readStats();
@@ -893,6 +1000,20 @@ client.once("clientReady", async () => {
   }
 });
 
+
+client.on("guildMemberUpdate", (oldMember, newMember) => {
+  const oldRoles = new Set(oldMember.roles.cache.keys());
+  const newRoles = new Set(newMember.roles.cache.keys());
+
+  const added = [...newRoles].filter(id => !oldRoles.has(id));
+  const removed = [...oldRoles].filter(id => !newRoles.has(id));
+
+  if (added.length || removed.length) {
+    console.log(`[ROLE UPDATE] ${newMember.user.tag}`);
+    if (added.length) console.log("  ADDED:", added);
+    if (removed.length) console.log("  REMOVED:", removed);
+  }
+});
 /* ================= INTERACTIONS ================= */
 
 client.on("interactionCreate", async (interaction) => {
