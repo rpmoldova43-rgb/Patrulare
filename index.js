@@ -796,6 +796,36 @@ const commands = [
         .setDescription("Selectează polițistul")
         .setRequired(false)
     ),
+    new SlashCommandBuilder()
+  .setName("setgrad")
+  .setDescription("Setează gradul UP pentru un polițist")
+  .addUserOption((option) =>
+    option
+      .setName("politist")
+      .setDescription("Selectează polițistul")
+      .setRequired(true)
+  )
+  .addStringOption((option) =>
+    option
+      .setName("grad")
+      .setDescription("Gradul care trebuie setat")
+      .setRequired(true)
+      .addChoices(
+        { name: "Agent", value: "agent" },
+        { name: "Agent Principal", value: "agent_principal" },
+        { name: "Agent Șef Adjunct", value: "agent_sef_adjunct" },
+        { name: "Agent Șef", value: "agent_sef" },
+        { name: "Agent Șef Principal", value: "agent_sef_principal" },
+        { name: "Subinspector", value: "subinspector" },
+        { name: "Inspector", value: "inspector" },
+        { name: "Inspector Principal", value: "inspector_principal" },
+        { name: "Subcomisar", value: "subcomisar" },
+        { name: "Comisar", value: "comisar" },
+        { name: "Comisar Șef", value: "comisar_sef" },
+        { name: "Sub Chestor", value: "sub_chestor" },
+        { name: "Chestor General", value: "chestor_general" }
+      )
+  ),
 
   new SlashCommandBuilder()
     .setName("topup")
@@ -861,6 +891,64 @@ client.on("interactionCreate", async (interaction) => {
           components: [row],
         });
       }
+
+      if (interaction.commandName === "setgrad") {
+  if (!canManageUpHours(interaction.member)) {
+    return interaction.reply({
+      content: "⛔ Nu ai acces la această comandă.",
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  const targetUser = interaction.options.getUser("politist", true);
+  const gradKey = interaction.options.getString("grad", true);
+
+  const rank = UP_RANKS.find((r) => r.key === gradKey);
+
+  if (!rank) {
+    return interaction.reply({
+      content: "❌ Grad invalid.",
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+
+  if (!member) {
+    return interaction.reply({
+      content: "❌ Membrul nu a fost găsit.",
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  const allStats = readStats();
+
+  if (!allStats[targetUser.id]) {
+    allStats[targetUser.id] = {
+      officerId: targetUser.id,
+      officerTag: targetUser.tag,
+      officerName: targetUser.username,
+      patrolCount: 0,
+      totalMs: 0,
+      lastPatrolAt: null,
+    };
+  }
+
+  const hours = rank.requiredHours;
+  allStats[targetUser.id].totalMs = hours * 60 * 60 * 1000;
+
+  writeStats(allStats);
+
+  await member.roles.add(rank.roleId, "Setare grad manual");
+
+  return interaction.reply({
+    content:
+      `✅ Grad setat pentru ${targetUser}\n` +
+      `🎖️ Grad: **${rank.name}**\n` +
+      `⏱️ Ore setate: **${hours}h**`,
+    flags: MessageFlags.Ephemeral,
+  });
+}
 
       if (interaction.commandName === "statistica-patrule") {
         if (!canViewPatrolStats(interaction.member)) {
