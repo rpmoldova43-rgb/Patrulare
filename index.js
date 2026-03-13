@@ -528,6 +528,15 @@ async function syncMemberUpRole(member) {
   }
 }
 
+console.log("[UP DEBUG]", {
+  user: member.user.tag,
+  currentRank: currentRank?.name || null,
+  earnedRank: earnedRank?.name || null,
+  protectedRank: protectedRank?.name || null,
+  nextRank: nextRank?.name || null,
+  totalHours,
+});
+
 
 async function syncAllUpRoles(guild) {
   const members = await guild.members.fetch();
