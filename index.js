@@ -72,6 +72,10 @@ if (
 const PANEL_TEMP_DELETE_MS = 5 * 60 * 1000;
 const STATS_FILE = path.join(__dirname, "patrol-stats.json");
 
+if (!fs.existsSync(STATS_FILE)) {
+  fs.writeFileSync(STATS_FILE, "{}", "utf8");
+}
+
 /* ================= VEHICLE LIST PE GRADE ================= */
 
 const VEHICLES_BY_RANK = {
@@ -226,8 +230,6 @@ const UP_RANKS = [
   { level: 11, key: "sub_chestor", name: "👑 Sub Chestor", roleId: RANK_ROLES.sub_chestor, requiredHours: 1100 },
   { level: 12, key: "chestor_general", name: "👑 Chestor General", roleId: RANK_ROLES.chestor_general, requiredHours: 1200 },
 ].filter((x) => x.roleId);
-
-const ALL_UP_ROLE_IDS = UP_RANKS.map((x) => x.roleId);
 
 /* ================= STORAGE ================= */
 
@@ -398,7 +400,7 @@ async function syncMemberUpRole(member) {
 
   try {
     if (!member.roles.cache.has(protectedRank.roleId)) {
-      await member.roles.add(protectedRank.roleId, 'Protejare grad existent / sincronizare UP fara downgrade');
+      await member.roles.add(protectedRank.roleId, "Protejare grad existent / sincronizare UP fara downgrade");
       return {
         changed: true,
         totalHours,
@@ -426,7 +428,7 @@ async function syncMemberUpRole(member) {
     }
 
     if (!member.roles.cache.has(nextRank.roleId)) {
-      await member.roles.add(nextRank.roleId, 'Promovare automată pe baza orelor din patrule');
+      await member.roles.add(nextRank.roleId, "Promovare automată pe baza orelor din patrule");
       return {
         changed: true,
         totalHours,
@@ -471,7 +473,6 @@ async function syncAllUpRoles(guild) {
 
   return changed;
 }
-
 
 function addPatrolStats(patrolData, durationMs) {
   const allStats = readStats();
@@ -590,8 +591,6 @@ function buildTopUpEmbed(entries) {
     .setFooter({ text: "Clasament după ore totale din patrule" })
     .setTimestamp();
 }
-
-
 
 async function updatePatrolStatsMessage(guild) {
   try {
@@ -736,9 +735,11 @@ const commands = [
     .setName("patrula-panel")
     .setDescription("Trimite panelul pentru sistemul de patrule")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+
   new SlashCommandBuilder()
     .setName("statistica-patrule")
     .setDescription("Actualizează mesajul fix cu statistica patrulelor"),
+
   new SlashCommandBuilder()
     .setName("statistica-politist")
     .setDescription("Vezi statistica unui polițist")
@@ -746,8 +747,10 @@ const commands = [
       option
         .setName("politist")
         .setDescription("Selectează polițistul")
-        .setRequired(true)),
-         new SlashCommandBuilder()
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
     .setName("up")
     .setDescription("Vezi progresul UP pentru tine sau pentru alt polițist")
     .addUserOption((option) =>
@@ -756,52 +759,53 @@ const commands = [
         .setDescription("Selectează polițistul")
         .setRequired(false)
     ),
-    new SlashCommandBuilder()
-  .setName("setore")
-  .setDescription("Setează manual orele UP pentru un polițist")
-  .addUserOption((option) =>
-    option
-      .setName("politist")
-      .setDescription("Selectează polițistul")
-      .setRequired(true)
-  )
-  .addNumberOption((option) =>
-    option
-      .setName("ore")
-      .setDescription("Numărul total de ore care trebuie setat")
-      .setRequired(true)
-  ),
 
-    new SlashCommandBuilder()
-  .setName("setgrad")
-  .setDescription("Setează gradul UP pentru un polițist")
-  .addUserOption((option) =>
-    option
-      .setName("politist")
-      .setDescription("Selectează polițistul")
-      .setRequired(true)
-  )
-  .addStringOption((option) =>
-    option
-      .setName("grad")
-      .setDescription("Gradul care trebuie setat")
-      .setRequired(true)
-      .addChoices(
-        { name: "Agent", value: "agent" },
-        { name: "Agent Principal", value: "agent_principal" },
-        { name: "Agent Șef Adjunct", value: "agent_sef_adjunct" },
-        { name: "Agent Șef", value: "agent_sef" },
-        { name: "Agent Șef Principal", value: "agent_sef_principal" },
-        { name: "Subinspector", value: "subinspector" },
-        { name: "Inspector", value: "inspector" },
-        { name: "Inspector Principal", value: "inspector_principal" },
-        { name: "Subcomisar", value: "subcomisar" },
-        { name: "Comisar", value: "comisar" },
-        { name: "Comisar Șef", value: "comisar_sef" },
-        { name: "Sub Chestor", value: "sub_chestor" },
-        { name: "Chestor General", value: "chestor_general" }
-      )
-  ),
+  new SlashCommandBuilder()
+    .setName("setore")
+    .setDescription("Setează manual orele UP pentru un polițist")
+    .addUserOption((option) =>
+      option
+        .setName("politist")
+        .setDescription("Selectează polițistul")
+        .setRequired(true)
+    )
+    .addNumberOption((option) =>
+      option
+        .setName("ore")
+        .setDescription("Numărul total de ore care trebuie setat")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setgrad")
+    .setDescription("Setează gradul UP pentru un polițist")
+    .addUserOption((option) =>
+      option
+        .setName("politist")
+        .setDescription("Selectează polițistul")
+        .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("grad")
+        .setDescription("Gradul care trebuie setat")
+        .setRequired(true)
+        .addChoices(
+          { name: "Agent", value: "agent" },
+          { name: "Agent Principal", value: "agent_principal" },
+          { name: "Agent Șef Adjunct", value: "agent_sef_adjunct" },
+          { name: "Agent Șef", value: "agent_sef" },
+          { name: "Agent Șef Principal", value: "agent_sef_principal" },
+          { name: "Subinspector", value: "subinspector" },
+          { name: "Inspector", value: "inspector" },
+          { name: "Inspector Principal", value: "inspector_principal" },
+          { name: "Subcomisar", value: "subcomisar" },
+          { name: "Comisar", value: "comisar" },
+          { name: "Comisar Șef", value: "comisar_sef" },
+          { name: "Sub Chestor", value: "sub_chestor" },
+          { name: "Chestor General", value: "chestor_general" }
+        )
+    ),
 
   new SlashCommandBuilder()
     .setName("topup")
@@ -841,7 +845,6 @@ client.once("clientReady", async () => {
 });
 
 /* ================= INTERACTIONS ================= */
-
 
 client.on("interactionCreate", async (interaction) => {
   try {
@@ -919,78 +922,68 @@ client.on("interactionCreate", async (interaction) => {
         await updatePatrolStatsMessage(interaction.guild);
 
         return interaction.reply({
-          content:
-            `✅ Orele au fost setate pentru ${targetUser}.
-` +
-            `⏱️ Ore totale: **${hours}h**`,
+          content: `✅ Orele au fost setate pentru ${targetUser}.\n⏱️ Ore totale: **${hours}h**`,
           flags: MessageFlags.Ephemeral,
         });
       }
 
       if (interaction.commandName === "setgrad") {
-  if (!canManageUpHours(interaction.member)) {
-    return interaction.reply({
-      content: "⛔ Nu ai acces la această comandă.",
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+        if (!canManageUpHours(interaction.member)) {
+          return interaction.reply({
+            content: "⛔ Nu ai acces la această comandă.",
+            flags: MessageFlags.Ephemeral,
+          });
+        }
 
-  const targetUser = interaction.options.getUser("politist", true);
-  const gradKey = interaction.options.getString("grad", true);
+        const targetUser = interaction.options.getUser("politist", true);
+        const gradKey = interaction.options.getString("grad", true);
+        const rank = UP_RANKS.find((r) => r.key === gradKey);
 
-  const rank = UP_RANKS.find((r) => r.key === gradKey);
+        if (!rank) {
+          return interaction.reply({
+            content: "❌ Grad invalid.",
+            flags: MessageFlags.Ephemeral,
+          });
+        }
 
-  if (!rank) {
-    return interaction.reply({
-      content: "❌ Grad invalid.",
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+        const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+        if (!member) {
+          return interaction.reply({
+            content: "❌ Membrul nu a fost găsit.",
+            flags: MessageFlags.Ephemeral,
+          });
+        }
 
-  const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+        const allStats = readStats();
+        if (!allStats[targetUser.id]) {
+          allStats[targetUser.id] = {
+            officerId: targetUser.id,
+            officerTag: targetUser.tag,
+            officerName: targetUser.username,
+            patrolCount: 0,
+            totalMs: 0,
+            lastPatrolAt: null,
+          };
+        }
 
-  if (!member) {
-    return interaction.reply({
-      content: "❌ Membrul nu a fost găsit.",
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+        const hours = rank.requiredHours;
+        allStats[targetUser.id].officerTag = targetUser.tag;
+        allStats[targetUser.id].officerName = targetUser.username;
+        allStats[targetUser.id].totalMs = hours * 60 * 60 * 1000;
+        writeStats(allStats);
 
-  const allStats = readStats();
+        const syncResult = await syncMemberUpRole(member);
+        if (syncResult.changed) {
+          await sendPromotionLog(interaction.guild, member, syncResult.oldRank, syncResult.newRank, syncResult.totalHours);
+        }
 
-  if (!allStats[targetUser.id]) {
-    allStats[targetUser.id] = {
-      officerId: targetUser.id,
-      officerTag: targetUser.tag,
-      officerName: targetUser.username,
-      patrolCount: 0,
-      totalMs: 0,
-      lastPatrolAt: null,
-    };
-  }
+        await updatePatrolStatsMessage(interaction.guild);
 
-  const hours = rank.requiredHours;
-  allStats[targetUser.id].officerTag = targetUser.tag;
-  allStats[targetUser.id].officerName = targetUser.username;
-  allStats[targetUser.id].totalMs = hours * 60 * 60 * 1000;
-
-  writeStats(allStats);
-
-  const syncResult = await syncMemberUpRole(member);
-  if (syncResult.changed) {
-    await sendPromotionLog(interaction.guild, member, syncResult.oldRank, syncResult.newRank, syncResult.totalHours);
-  }
-
-  await updatePatrolStatsMessage(interaction.guild);
-
-  return interaction.reply({
-    content:
-      `✅ Grad setat pentru ${targetUser}\n` +
-      `🎖️ Grad: **${rank.name}**\n` +
-      `⏱️ Ore setate: **${hours}h**`,
-    flags: MessageFlags.Ephemeral,
-  });
-}
+        return interaction.reply({
+          content: `✅ Grad setat pentru ${targetUser}\n🎖️ Grad: **${rank.name}**\n⏱️ Ore setate: **${hours}h**`,
+          flags: MessageFlags.Ephemeral,
+        });
+      }
 
       if (interaction.commandName === "statistica-patrule") {
         if (!canViewPatrolStats(interaction.member)) {
@@ -1118,7 +1111,6 @@ client.on("interactionCreate", async (interaction) => {
         }
 
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
         const changed = await syncAllUpRoles(interaction.guild);
 
         return interaction.editReply({
