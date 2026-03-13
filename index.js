@@ -71,7 +71,7 @@ if (
 }
 
 const PANEL_TEMP_DELETE_MS = 5 * 60 * 1000;
-const STATS_FILE = path.join(__dirname, "patrol-stats.json");
+const STATS_FILE = "/app/patrol-stats.json";
 
 /* ================= VEHICLE LIST PE GRADE ================= */
 
