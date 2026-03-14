@@ -486,31 +486,55 @@ async function syncAllUpRoles(guild) {
 }
 
 
-function addPatrolStats(patrolData, durationMs) {
-  const allStats = readStats();
-  const userId = patrolData.officerId;
+    function addPatrolStats(patrolData, durationMs) {
+      const allStats = readStats();
 
-  if (!allStats[userId]) {
-    allStats[userId] = {
-      officerId: patrolData.officerId,
-      officerTag: patrolData.officerTag,
-      officerName: patrolData.officerName,
-      patrolCount: 0,
-      totalMs: 0,
-      lastPatrolAt: null,
-    };
-  }
+      /* ================= OFITER CARE A INCEPUT PATRULA ================= */
 
-  allStats[userId].officerTag = patrolData.officerTag;
-  allStats[userId].officerName = patrolData.officerName;
-  allStats[userId].patrolCount += 1;
-  allStats[userId].totalMs += durationMs;
-  allStats[userId].lastPatrolAt = Date.now();
+      const officerId = patrolData.officerId;
 
-  writeStats(allStats);
-}
+      if (!allStats[officerId]) {
+        allStats[officerId] = {
+          officerId: patrolData.officerId,
+          officerTag: patrolData.officerTag,
+          officerName: patrolData.officerName,
+          patrolCount: 0,
+          totalMs: 0,
+          lastPatrolAt: null,
+        };
+      }
 
-function buildStatsEmbed(entries) {
+      allStats[officerId].officerTag = patrolData.officerTag;
+      allStats[officerId].officerName = patrolData.officerName;
+      allStats[officerId].patrolCount += 1;
+      allStats[officerId].totalMs += durationMs;
+      allStats[officerId].lastPatrolAt = Date.now();
+
+      /* ================= PARTENERUL DE PATRULA ================= */
+
+      if (patrolData.partnerId) {
+        const partnerId = patrolData.partnerId;
+
+        if (!allStats[partnerId]) {
+          allStats[partnerId] = {
+            officerId: partnerId,
+            officerTag: patrolData.partnerLabel || "Partener",
+            officerName: patrolData.partnerLabel || "Partener",
+            patrolCount: 0,
+            totalMs: 0,
+            lastPatrolAt: null,
+          };
+        }
+
+        allStats[partnerId].officerTag = patrolData.partnerLabel || allStats[partnerId].officerTag;
+        allStats[partnerId].officerName = patrolData.partnerLabel || allStats[partnerId].officerName;
+        allStats[partnerId].patrolCount += 1;
+        allStats[partnerId].totalMs += durationMs;
+        allStats[partnerId].lastPatrolAt = Date.now();
+      }
+     }
+
+  function buildStatsEmbed(entries) {
   const totalHoursMs = entries.reduce((sum, entry) => sum + (entry.totalMs || 0), 0);
   const totalPatrols = entries.reduce((sum, entry) => sum + (entry.patrolCount || 0), 0);
 
