@@ -266,14 +266,22 @@ function canManageUpHours(member) {
     member.permissions.has(PermissionFlagsBits.Administrator)
   );
 }
-
 function formatDurationShort(ms) {
-  const totalMinutes = Math.floor(ms / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours <= 0 && minutes <= 0) {
+    return `${seconds}s`;
+  }
+
+  if (hours <= 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
   return `${hours}h ${minutes}m`;
 }
-
 async function sendTempMessage(channel, payload) {
   const sent = await channel.send(payload);
   setTimeout(() => {
@@ -1044,20 +1052,12 @@ client.on("interactionCreate", async (interaction) => {
           });
         }
 
-        const statsMessage = await statsChannel.messages.fetch(PATROL_STATS_MESSAGE_ID).catch(() => null);
-        if (!statsMessage) {
-          return interaction.reply({
-            content: "❌ Nu am găsit mesajul fix de statistică. Verifică PATROL_STATS_MESSAGE_ID.",
-            flags: MessageFlags.Ephemeral,
-          });
-        }
+      await updatePatrolStatsMessage(interaction.guild);
 
-        await updatePatrolStatsMessage(interaction.guild);
-
-        return interaction.reply({
-          content: "✅ Mesajul fix cu statistica patrulelor a fost actualizat.",
-          flags: MessageFlags.Ephemeral,
-        });
+      return interaction.reply({
+        content: "✅ Mesajul fix cu statistica patrulelor a fost actualizat.",
+        flags: MessageFlags.Ephemeral,
+      });
       }
 
       if (interaction.commandName === "statistica-politist") {
